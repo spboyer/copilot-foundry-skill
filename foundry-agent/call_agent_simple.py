@@ -2,8 +2,16 @@
 """Call a Foundry agent. That's it."""
 import sys
 import os
+from pathlib import Path
 
-# Get config from environment
+# Load .env file if it exists
+env_file = Path(__file__).parent / ".env"
+if env_file.exists():
+    for line in env_file.read_text().splitlines():
+        if line and not line.startswith("#") and "=" in line:
+            k, _, v = line.partition("=")
+            os.environ.setdefault(k.strip(), v.strip().strip('"\''))
+
 PROJECT_ENDPOINT = os.environ.get("PROJECT_ENDPOINT")
 AGENT_NAME = os.environ.get("AGENT_NAME", "ratemytask")
 

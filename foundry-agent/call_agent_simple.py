@@ -4,8 +4,14 @@ import sys
 import os
 from pathlib import Path
 
+# Auto-use venv if it exists
+script_dir = Path(__file__).parent
+venv_python = script_dir / ".venv" / "bin" / "python"
+if venv_python.exists() and sys.executable != str(venv_python):
+    os.execv(str(venv_python), [str(venv_python)] + sys.argv)
+
 # Load .env file if it exists
-env_file = Path(__file__).parent / ".env"
+env_file = script_dir / ".env"
 if env_file.exists():
     for line in env_file.read_text().splitlines():
         if line and not line.startswith("#") and "=" in line:

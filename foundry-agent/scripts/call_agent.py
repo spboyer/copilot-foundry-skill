@@ -81,27 +81,30 @@ def check_azure_cli_installed() -> bool:
         return False
 
 
-def check_environment() -> bool:
+def check_environment(quiet: bool = False) -> bool:
     """Verify required environment variables are set."""
     global PROJECT_ENDPOINT
     PROJECT_ENDPOINT = os.environ.get("PROJECT_ENDPOINT")
     
     if not PROJECT_ENDPOINT:
-        print("ERROR: PROJECT_ENDPOINT environment variable is required.")
-        if _env_file:
-            print(f"\nLoaded .env from: {_env_file}")
-            print("But PROJECT_ENDPOINT was not found or is empty.")
+        if not quiet:
+            print("ERROR: PROJECT_ENDPOINT environment variable is required.")
+            if _env_file:
+                print(f"\nLoaded .env from: {_env_file}")
+                print("But PROJECT_ENDPOINT was not found or is empty.")
+            else:
+                print("\nNo .env file found. Looked in:")
+                print(f"  - {Path(__file__).parent.parent}/.env")
+                print(f"  - {Path.cwd()}/.env")
+            print("\nSet it with:")
+            print('  export PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"')
+            print("\nOr add to your .env file:")
+            print('  PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>')
         else:
-            print("\nNo .env file found. Looked in:")
-            print(f"  - {Path(__file__).parent.parent}/.env")
-            print(f"  - {Path.cwd()}/.env")
-        print("\nSet it with:")
-        print('  export PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"')
-        print("\nOr add to your .env file:")
-        print('  PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>')
+            print("ERROR: PROJECT_ENDPOINT not configured", file=sys.stderr)
         return False
     
-    if _env_file:
+    if _env_file and not quiet:
         print(f"Loaded config from: {_env_file}")
     return True
 
@@ -308,16 +311,31 @@ Environment Variables:
         action="store_true",
         help="List available agents"
     )
+    parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="Suppress diagnostic output, only show agent response"
+    )
     
     args = parser.parse_args()
     
     # Check environment variables first
-    if not check_environment():
+    if not check_environment(quiet=args.quiet):
         return 1
     
-    # Check auth
-    if not check_auth():
-        return 1
+    # Check auth (silently if --quiet)
+    if not args.quiet:
+        if not check_auth():
+            return 1
+    else:
+        # Quick silent auth check
+        try:
+            from azure.identity import DefaultAzureCredential
+            credential = DefaultAzureCredential()
+            credential.get_token("https://management.azure.com/.default")
+        except:
+            print("ERROR: Authentication failed. Run: az login", file=sys.stderr)
+            return 1
     
     try:
         if args.list:
@@ -335,17 +353,22 @@ Environment Variables:
         message = " ".join(args.message)
         agent_name = args.agent or AGENT_NAME
         
-        print(f"Agent: {agent_name}")
-        print(f"Message: {message}\n")
+        if not args.quiet:
+            print(f"Agent: {agent_name}")
+            print(f"Message: {message}\n")
         
         if args.stream:
-            print("Response: ", end="", flush=True)
+            if not args.quiet:
+                print("Response: ", end="", flush=True)
             for chunk in call_agent_streaming(message, agent_name):
                 print(chunk, end="", flush=True)
             print()
         else:
             response = call_agent(message, agent_name)
-            print(f"Response:\n{response}")
+            if args.quiet:
+                print(response)
+            else:
+                print(f"Response:\n{response}")
         
         return 0
         

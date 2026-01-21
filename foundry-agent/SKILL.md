@@ -55,6 +55,14 @@ source .env
 
 ## Usage
 
+### Quick Call (Recommended for CLI Skills)
+Clean output with no diagnostics - perfect for skill invocation:
+```bash
+./scripts/quick_call.sh "Rate my task: fix the login button"
+# or
+python scripts/call_agent.py --quiet "Rate my task: fix the login button"
+```
+
 ### Check Authentication
 ```bash
 python scripts/check_auth.py
@@ -65,7 +73,7 @@ python scripts/check_auth.py
 python scripts/call_agent.py --list
 ```
 
-### Call an Agent
+### Call an Agent (Verbose)
 ```bash
 python scripts/call_agent.py "Rate my task: write unit tests for auth module"
 ```
@@ -91,7 +99,8 @@ python scripts/call_agent.py --stream "Tell me about yourself"
 |--------|---------|
 | `scripts/setup.py` | Interactive setup: install deps, verify Azure CLI, configure .env |
 | `scripts/check_auth.py` | Verify Azure authentication, run `az login` if needed |
-| `scripts/call_agent.py` | Send messages to an existing Foundry agent |
+| `scripts/call_agent.py` | Send messages to an existing Foundry agent (supports --quiet mode) |
+| `scripts/quick_call.sh` | Bash wrapper for clean output (uses --quiet automatically) |
 
 ## API Pattern
 

@@ -45,16 +45,19 @@ def load_env_file():
     
     for env_path in env_locations:
         if env_path.exists():
-            with open(env_path) as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        key, _, value = line.partition("=")
-                        key = key.strip()
-                        value = value.strip().strip('"').strip("'")
-                        if key and value and key not in os.environ:
-                            os.environ[key] = value
-            return str(env_path)
+            try:
+                with open(env_path, encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            key, _, value = line.partition("=")
+                            key = key.strip()
+                            value = value.strip().strip('"').strip("'")
+                            if key and value and key not in os.environ:
+                                os.environ[key] = value
+                return str(env_path)
+            except (IOError, UnicodeDecodeError):
+                continue
     return None
 
 

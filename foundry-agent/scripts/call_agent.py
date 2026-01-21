@@ -2,26 +2,7 @@
 """
 Call an existing Microsoft Foundry agent with a message.
 Uses AzureDefaultCredential for authentication.
-
-NOTE: This script automatically uses the .venv if it exists in the skill directory.
 """
-
-import os
-import sys
-
-# Auto-activate venv if available
-def _activate_venv():
-    """Activate the skill's virtual environment if it exists."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    skill_dir = os.path.dirname(script_dir)  # foundry-agent/
-    project_root = os.path.dirname(skill_dir)  # copilot-foundry-skill/
-    venv_python = os.path.join(project_root, '.venv', 'bin', 'python')
-    
-    # If we're not running from the venv and it exists, re-exec with venv python
-    if os.path.exists(venv_python) and sys.executable != venv_python:
-        os.execv(venv_python, [venv_python] + sys.argv)
-
-_activate_venv()
 
 import argparse
 import os
@@ -32,15 +13,14 @@ from pathlib import Path
 def load_env_file():
     """Load .env file from the script's directory or parent."""
     script_dir = Path(__file__).parent
-    skill_dir = script_dir.parent  # foundry-agent/
-    project_root = skill_dir.parent  # copilot-foundry-skill/
+    skill_dir = script_dir.parent
+    project_root = skill_dir.parent
     
-    # Look for .env in multiple locations
     env_locations = [
-        project_root / ".env",        # copilot-foundry-skill/.env (project root)
-        skill_dir / ".env",           # foundry-agent/.env
-        script_dir / ".env",          # foundry-agent/scripts/.env
-        Path.cwd() / ".env",          # current working directory
+        project_root / ".env",
+        skill_dir / ".env",
+        script_dir / ".env",
+        Path.cwd() / ".env",
     ]
     
     for env_path in env_locations:
@@ -61,10 +41,7 @@ def load_env_file():
     return None
 
 
-# Load .env file before reading environment variables
 _env_file = load_env_file()
-
-# Configuration via environment variables (no defaults for sensitive values)
 PROJECT_ENDPOINT = os.environ.get("PROJECT_ENDPOINT")
 AGENT_NAME = os.environ.get("AGENT_NAME", "ratemytask")
 
@@ -91,62 +68,26 @@ def check_environment(quiet: bool = False) -> bool:
     
     if not PROJECT_ENDPOINT:
         if not quiet:
-            print("ERROR: PROJECT_ENDPOINT environment variable is required.")
-            if _env_file:
-                print(f"\nLoaded .env from: {_env_file}")
-                print("But PROJECT_ENDPOINT was not found or is empty.")
-            else:
-                print("\nNo .env file found. Looked in:")
-                print(f"  - {Path(__file__).parent.parent}/.env")
-                print(f"  - {Path.cwd()}/.env")
-            print("\nSet it with:")
-            print('  export PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"')
-            print("\nOr add to your .env file:")
-            print('  PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>')
-        else:
-            print("ERROR: PROJECT_ENDPOINT not configured", file=sys.stderr)
+            print("ERROR: PROJECT_ENDPOINT required. Set it or create .env file.", file=sys.stderr)
         return False
     
     if _env_file and not quiet:
-        print(f"Loaded config from: {_env_file}")
+        print(f"Using: {_env_file}")
     return True
 
 
 def check_auth() -> bool:
     """Quick auth check before making API calls."""
-    script_dir = Path(__file__).parent
-    
-    # First check if Azure CLI is installed
-    if not check_azure_cli_installed():
-        print("ERROR: Azure CLI is not installed.")
-        print("\nInstall it:")
-        print("  macOS:   brew install azure-cli")
-        print("  Windows: winget install Microsoft.AzureCLI")
-        print("  Linux:   curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash")
-        print(f"\nOr run setup: python {script_dir}/setup.py")
-        return False
-    
     try:
         from azure.identity import DefaultAzureCredential
-        from azure.core.exceptions import ClientAuthenticationError
-    except ImportError:
-        print("ERROR: Required Python packages not installed.")
-        print(f"\nRun setup: python {script_dir}/setup.py")
-        print("\nOr install manually:")
-        print("  pip install --pre 'azure-ai-projects>=2.0.0b1' azure-identity")
-        return False
-    
-    try:
         credential = DefaultAzureCredential()
         credential.get_token("https://management.azure.com/.default")
         return True
-    except ClientAuthenticationError:
-        print("ERROR: Not authenticated with Azure.")
-        print("\nRun: az login")
-        print(f"\nOr run setup: python {script_dir}/setup.py")
+    except ImportError:
+        print("ERROR: Run: pip install azure-ai-projects azure-identity", file=sys.stderr)
         return False
-    except Exception as e:
-        print(f"ERROR: Authentication failed: {e}")
+    except Exception:
+        print("ERROR: Run: az login", file=sys.stderr)
         return False
 
 

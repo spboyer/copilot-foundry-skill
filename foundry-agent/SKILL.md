@@ -1,6 +1,6 @@
 ---
 name: foundry-agent
-description: Call Foundry agents. Use when user asks to rate a task.
+description: Call Foundry agents. Use when user asks to rate a task, prioritize work, or call ratemytask agent.
 license: MIT
 ---
 
